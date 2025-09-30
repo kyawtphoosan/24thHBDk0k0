@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Birthday Cake</title>
+<style>
+  body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+  body { background: radial-gradient(ellipse at bottom, #000020 0%, #000000 100%); display: flex; justify-content: center; align-items: center; flex-direction: column; position: relative; }
+
+  /* Stars */
+  .star { position: absolute; border-radius: 50%; background: white; opacity: 0.8; }
+  @keyframes twinkle { 0%{opacity:0.2;} 50%{opacity:1;} 100%{opacity:0.2;} }
+
+  /* Cake container */
+  .cake-container { position: relative; width: 250px; }
+  .cake-layer { position: relative; width: 250px; height: 60px; background: #ff9999; border-radius: 15px; margin-top: -15px; box-shadow: 0 0 10px #ff6666; }
+  .cake-layer:nth-child(2) { background: #ffcccc; height: 40px; }
+
+  /* Candle */
+  .candle { position: absolute; width: 20px; height: 50px; background: #ffcc00; border-radius: 5px; top: -50px; }
+  .flame { position: absolute; top: -20px; left: 5px; width: 10px; height: 20px; background: radial-gradient(circle, #fff200, #ff6600); border-radius: 50%; animation: flicker 0.2s infinite alternate; }
+  @keyframes flicker { 0%{transform:scale(1) translateY(0);opacity:1;} 50%{transform:scale(1.2) translateY(-2px);opacity:0.8;} 100%{transform:scale(1) translateY(0);opacity:1;} }
+
+  /* Confetti */
+  .confetti { position: absolute; width: 5px; height: 5px; border-radius: 50%; animation: fall 3s linear infinite; }
+  @keyframes fall { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(400px) rotate(360deg);opacity:0;} }
+
+  /* Buttons */
+  .controls { margin-top: 20px; display: flex; gap: 10px; }
+  button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #333; color: white; font-size: 16px; }
+  button:hover { background: #555; }
+</style>
+</head>
+<body>
+
+<div class="cake-container" id="cake">
+  <div class="cake-layer"></div>
+  <div class="cake-layer"></div>
+</div>
+
+<div class="controls">
+  <button id="resetBtn">Reset Cake</button>
+  <button id="shareBtn">Share</button>
+  <span id="candleCount" style="color:white;font-size:16px;">Candles: 5</span>
+</div>
+
+<script>
+  // Generate stars
+  for(let i=0;i<150;i++){
+    const star=document.createElement('div');
+    star.classList.add('star');
+    star.style.width=star.style.height=Math.random()*2+1+'px';
+    star.style.top=Math.random()*window.innerHeight+'px';
+    star.style.left=Math.random()*window.innerWidth+'px';
+    star.style.animation=`twinkle ${Math.random()*2+1}s infinite alternate`;
+    document.body.appendChild(star);
+  }
+
+  const cake=document.getElementById('cake');
+  const candleCountDisplay=document.getElementById('candleCount');
+  let candlesNum=5;
+  let candles=[];
+
+  function createCandles(num){
+    candles.forEach(c=>c.remove());
+    candles=[];
+    for(let i=0;i<num;i++){
+      const candle=document.createElement('div');
+      candle.classList.add('candle');
+      candle.style.left=(i*40 + 50)+'px';
+      const flame=document.createElement('div');
+      flame.classList.add('flame');
+      candle.appendChild(flame);
+      cake.appendChild(candle);
+      candles.push({candle, flame, alive:true});
+    }
+    candleCountDisplay.textContent=`Candles: ${num}`;
+  }
+
+  createCandles(candlesNum);
+
+  // Confetti
+  function createConfetti(){
+    const conf=document.createElement('div');
+    conf.classList.add('confetti');
+    conf.style.left=Math.random()*window.innerWidth+'px';
+    conf.style.backgroundColor=`hsl(${Math.random()*360},100%,50%)`;
+    document.body.appendChild(conf);
+    setTimeout(()=>conf.remove(),3000);
+  }
+  setInterval(createConfetti,200);
+
+  // Blow detection (simplified)
+  let audioContext, analyser, microphone, dataArray;
+  async function initMic(){
+    try{
+      audioContext=new (window.AudioContext||window.webkitAudioContext)();
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      microphone=audioContext.createMediaStreamSource(stream);
+      analyser=audioContext.createAnalyser();
+      microphone.connect(analyser);
+      dataArray=new Uint8Array(analyser.frequencyBinCount);
+      detectBlow();
+    }catch(e){console.log('Microphone access denied',e);}
+  }
+
+  function detectBlow(){
+    analyser.getByteFrequencyData(dataArray);
+    const sum=dataArray.reduce((a,b)=>a+b,0);
+    if(sum>10000){ // threshold, adjust if needed
+      candles.forEach(c=>{
+        if(c.alive){
+          c.flame.style.display='none';
+          c.alive=false;
+        }
+      });
+    }
+    requestAnimationFrame(detectBlow);
+  }
+
+  initMic();
+
+  // Reset cake
+  document.getElementById('resetBtn').addEventListener('click',()=>createCandles(candlesNum));
+
+  // Share button
+  document.getElementById('shareBtn').addEventListener('click',()=>{
+    const url=window.location.href;
+    navigator.clipboard.writeText(url).then(()=>alert('Link copied to clipboard!'));
+  });
+</script>
+
+</body>
+</html>
